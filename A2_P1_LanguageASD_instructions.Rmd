@@ -78,7 +78,7 @@ Load necessary libraries : what will you need?
 
 ```{r Load Libraries, include = FALSE}
 library(pacman)
-p_load(tidyverse, lme4, dplyr, lmerTest, DescTools)
+p_load(tidyverse, lme4, dplyr, lmerTest, DescTools, MuMIn)
 ```
 
 ### Define your working directory and load the data
@@ -123,66 +123,24 @@ train_visit1 %>%
   dplyr::summarise(
     n = n(),
     meanAge = mean(Age, na.rm = T),
+    sdAge = sd(Age, na.rm = T),
     femaleN = sum(Gender == "F"),
+    meanADOS = mean(severity, na.rm = T),
+    whiteN = sum(Ethnicity == "White"),
     meanVIQ = mean(verbalIQ, na.rm = T),
+    sdVIQ = sd(verbalIQ, na.rm = T),
     meanNVIQ = mean(nonVerbalIQ, na.rm = T),
-    meanSocialization = mean(Socialization)
+    sdNVIQ = sd(nonVerbalIQ, na.rm = T),
+    meanSocialization = mean(Socialization),
+    meanWord = mean(totalW_CHI, na.rm = T),
+    meanUnique = mean(uniqueW_CHI, na.rm = T),
+    meanChiMLU = mean(CHI_MLU, na.rm = T),
+    meanMotMLU = mean(MOT_MLU, na.rm =T)
   )
+write.csv(train_visit1, file = "Train_1_table.csv", sep = ",")
 
-#visit 2
-train_visit2 <- subset(train, VISIT == 2)
-train_visit2 %>% 
-  group_by(Diagnosis) %>% 
-  dplyr::summarise(
-    n = n(),
-    meanAge = mean(Age, na.rm = T),
-    femaleN = sum(Gender == "F"),
-    meanSocialization = mean(Socialization)
-  )
-
-#visit 3
-train_visit3 <- subset(train, VISIT == 3)
-train_visit3 %>% 
-  group_by(Diagnosis) %>% 
-  dplyr::summarise(
-    n = n(),
-    meanAge = mean(Age, na.rm = T),
-    femaleN = sum(Gender == "F"),
-    meanSocialization = mean(Socialization)
-  )
-
-#visit 4
-train_visit4 <- subset(train, VISIT == 4)
-train_visit4 %>% 
-  group_by(Diagnosis) %>% 
-  dplyr::summarise(
-    n = n(),
-    meanAge = mean(Age, na.rm = T),
-    femaleN = sum(Gender == "F"),
-    meanSocialization = mean(Socialization)
-  )
-#visit 5
-train_visit5 <- subset(train, VISIT == 5)
-train_visit5 %>% 
-  group_by(Diagnosis) %>% 
-  dplyr::summarise(
-    n = n(),
-    meanAge = mean(Age, na.rm = T),
-    femaleN = sum(Gender == "F"),
-    meanSocialization = mean(Socialization)
-  )
-#visit 6
-train_visit6 <- subset(train, VISIT == 6)
-train_visit6 %>% 
-  group_by(Diagnosis) %>% 
-  dplyr::summarise(
-    n = n(),
-    meanAge = mean(Age, na.rm = T),
-    femaleN = sum(Gender == "F"),
-    meanSocialization = mean(Socialization)
-  )
-
-
+#Releveling diagnosis
+train$Diagnosis <- relevel(train$Diagnosis, ref = "TD")
 ```
 
 The sample included mostly young (<20) white males ...
@@ -204,16 +162,19 @@ Remember to plot the data first and then to run a statistical test.
 # i) over time
 #Plotting MLU changes by number of visits
 ggplot(train, aes(VISIT, CHI_MLU, color = Diagnosis)) + 
-  geom_jitter() +
+  geom_point() +
   geom_smooth(method = "lm")+
   labs(title = "Child MLU predicted by number of visits", x = "Visit", y = "Child MLU")
 
+
 #Model 1: child MLU predicted by number of visits
-model1 <- lmer(CHI_MLU ~ VISIT * Diagnosis + (1 + VISIT|SUBJ), data = train)
+hyp1model0 <- lm(CHI_MLU ~ 1, data = train)
+hyp1model1 <- lmer(CHI_MLU ~ VISIT + Diagnosis + (1 + VISIT|SUBJ), data = train)
+hyp1model2 <- lmer(CHI_MLU ~ VISIT * Diagnosis + (1 + VISIT|SUBJ), data = train)
 
-summary(model)
-
-# ii) according to diagnosis
+anova(hyp1model1, hyp1model2)
+# summary
+summary(hyp1model2)
 
 ```
 
@@ -224,8 +185,10 @@ First build the different models, then compare them to see which one is better.
 
 ```{r ex2 evaluate, include = FALSE}
 
+#assessing the variance of our model
+MuMIn::r.squaredGLMM(hyp1model2)
+MuMIn::r.squaredGLMM(hyp1model1)
 
-```{r ex2 growth curve, include = FALSE}
 
 ```
 
@@ -249,7 +212,26 @@ Linguistic development of children MLU is affected by ... [COMPLETE]
 ### Hypothesis: Parental MLU changes: i) over time, ii) according to diagnosis
 
 ```{r ex3, include = FALSE}
+#Plotting MLU changes by number of visits
+ggplot(train, aes(VISIT, MOT_MLU, color = Diagnosis)) + 
+  geom_point() +
+  geom_smooth(method = "lm")+
+  labs(title = "Parent MLU predicted by number of visits", x = "Visit", y = "Mother MLU")
 
+
+#Model 1: child MLU predicted by number of visits
+hyp2model0 <- lm(MOT_MLU ~ 1, data = train)
+hyp2model1 <- lmer(MOT_MLU ~ VISIT + Diagnosis + (1 + VISIT|SUBJ), data = train)
+hyp2model2 <- lmer(MOT_MLU ~ VISIT * Diagnosis + (1 + VISIT|SUBJ), data = train)
+
+anova(hyp2model1, hyp2model2)
+# summary
+summary(hyp2model2)
+summary(hyp2model1)
+
+#assessing the variance of our model
+MuMIn::r.squaredGLMM(hyp2model2)
+MuMIn::r.squaredGLMM(hyp2model1)
 ```
 
 Parent MLU is affected by ... but probably not ...
